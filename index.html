@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcify — Premium Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #17171d;
+    --surface2: #1f1f27;
+    --surface3: #28282f;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent: #a78bfa;
+    --accent-dim: rgba(167,139,250,0.12);
+    --accent-hover: rgba(167,139,250,0.22);
+    --orange: #fb923c;
+    --orange-dim: rgba(251,146,60,0.12);
+    --orange-hover: rgba(251,146,60,0.22);
+    --green: #34d399;
+    --red: #f87171;
+    --btn-radius: 18px;
+  }
+
+  html, body {
+    width: 100%; min-height: 100vh;
+    background: var(--bg);
+    font-family: 'Syne', sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  /* ─── page wrapper (normal flow so modal overlay works) ─── */
+  #app {
+    width: 100%; max-width: 400px;
+    position: relative;
+  }
+
+  /* ─── modal overlay – normal flow, min-height gives it space ─── */
+  #modal-wrap {
+    display: none;
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.72);
+    border-radius: 36px;
+    align-items: center; justify-content: center;
+    z-index: 10;
+    min-height: 100%;
+  }
+  #modal-wrap.show { display: flex; }
+
+  #modal {
+    background: var(--surface);
+    border: 0.5px solid var(--border-hover);
+    border-radius: 28px;
+    padding: 2rem 1.75rem 1.75rem;
+    width: 84%;
+    max-width: 300px;
+    animation: modal-in 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  @keyframes modal-in {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .modal-icon {
+    width: 52px; height: 52px;
+    background: var(--accent-dim);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem;
+    font-size: 24px;
+  }
+
+  .modal-title {
+    font-size: 1.25rem; font-weight: 700;
+    color: var(--text-primary);
+    text-align: center; margin-bottom: 0.4rem;
+    letter-spacing: -0.02em;
+  }
+
+  .modal-desc {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; font-weight: 300;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .modal-perks {
+    list-style: none;
+    margin-bottom: 1.5rem;
+  }
+  .modal-perks li {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.73rem; font-weight: 300;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    display: flex; align-items: center; gap: 8px;
+    border-top: 0.5px solid var(--border);
+  }
+  .modal-perks li:last-child { border-bottom: 0.5px solid var(--border); }
+  .perk-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); flex-shrink: 0;
+  }
+
+  .btn-subscribe {
+    width: 100%;
+    background: var(--accent);
+    color: #0e0e12;
+    border: none;
+    border-radius: 14px;
+    padding: 0.85rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem; font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-bottom: 0.65rem;
+  }
+  .btn-subscribe:hover { opacity: 0.9; }
+  .btn-subscribe:active { transform: scale(0.97); }
+
+  .btn-later {
+    width: 100%;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    border-radius: 14px;
+    padding: 0.6rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem; font-weight: 300;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .btn-later:hover { color: var(--text-secondary); }
+
+  /* ─── calculator card ─── */
+  #calc {
+    background: var(--surface);
+    border-radius: 36px;
+    border: 0.5px solid var(--border);
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ─── display ─── */
+  #display-area {
+    padding: 2.5rem 1.75rem 1.5rem;
+    background: var(--surface);
+  }
+
+  #expression {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem; font-weight: 300;
+    color: var(--text-muted);
+    min-height: 1.2rem;
+    text-align: right;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.04em;
+    transition: color 0.2s;
+    word-break: break-all;
+  }
+
+  #result {
+    font-family: 'DM Mono', monospace;
+    font-size: 3.2rem; font-weight: 400;
+    color: var(--text-primary);
+    text-align: right;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    min-height: 3.5rem;
+    display: flex; align-items: flex-end; justify-content: flex-end;
+    overflow: hidden;
+    word-break: break-all;
+    transition: color 0.2s;
+  }
+  #result.big { font-size: 2.6rem; }
+  #result.bigger { font-size: 2rem; }
+
+  .sub-badge {
+    display: none;
+    align-items: center; gap: 6px;
+    margin-top: 0.75rem;
+  }
+  .sub-badge.show { display: flex; }
+  .sub-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .sub-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem; font-weight: 300;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── button grid ─── */
+  #btn-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    padding: 0 0.25rem 0.25rem;
+  }
+
+  .btn {
+    aspect-ratio: 1;
+    background: transparent;
+    border: none;
+    border-radius: var(--btn-radius);
+    font-family: 'Syne', sans-serif;
+    font-size: 1.35rem; font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    margin: 3px;
+    position: relative;
+    transition: background 0.1s, transform 0.08s;
+    letter-spacing: -0.01em;
+  }
+  .btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: var(--btn-radius);
+    border: 0.5px solid var(--border);
+    pointer-events: none;
+  }
+
+  .btn:hover { background: var(--surface2); }
+  .btn:active { transform: scale(0.92); background: var(--surface3); }
+
+  .btn.op {
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .btn.op::after { border-color: rgba(167,139,250,0.2); }
+  .btn.op:hover { background: var(--accent-hover); }
+
+  .btn.eq {
+    color: #0e0e12;
+    background: var(--accent);
+    font-size: 1.6rem;
+  }
+  .btn.eq::after { border-color: transparent; }
+  .btn.eq:hover { background: #c4b5fd; }
+  .btn.eq:active { background: #a78bfa; }
+
+  .btn.ac {
+    color: var(--red);
+    background: rgba(248,113,113,0.1);
+    font-size: 1rem; font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .btn.ac::after { border-color: rgba(248,113,113,0.15); }
+  .btn.ac:hover { background: rgba(248,113,113,0.18); }
+
+  .btn.zero {
+    grid-column: span 2;
+    aspect-ratio: unset;
+    border-radius: 999px;
+    justify-content: flex-start;
+    padding-left: 1.4rem;
+    font-size: 1.35rem;
+  }
+
+  .btn.fn {
+    color: var(--text-secondary);
+    background: var(--surface2);
+    font-size: 1rem; font-weight: 600;
+  }
+  .btn.fn::after { border-color: var(--border); }
+  .btn.fn:hover { background: var(--surface3); }
+
+  .btn.orange {
+    color: var(--orange);
+    background: var(--orange-dim);
+  }
+  .btn.orange::after { border-color: rgba(251,146,60,0.2); }
+  .btn.orange:hover { background: var(--orange-hover); }
+
+  /* ─── tap pulse animation ─── */
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(167,139,250,0.35); }
+    70%  { box-shadow: 0 0 0 12px rgba(167,139,250,0); }
+    100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); }
+  }
+  .btn.eq.pulsing { animation: pulse 0.45s ease-out; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- subscription modal overlay (normal-flow so iframe height isn't broken) -->
+  <div id="modal-wrap">
+    <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-icon" aria-hidden="true">🔒</div>
+      <p class="modal-title" id="modal-title">Premium Feature</p>
+      <p class="modal-desc">Subscribe to unlock instant results and unlimited calculations.</p>
+      <div style="background:var(--accent-dim);border:0.5px solid rgba(167,139,250,0.25);border-radius:14px;padding:0.9rem 1rem;margin-bottom:1rem;text-align:center;">
+        <span style="font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:300;color:var(--text-secondary);letter-spacing:0.05em;display:block;margin-bottom:2px;">MONTHLY PLAN</span>
+        <span style="font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:800;color:var(--accent);letter-spacing:-0.03em;">₱99</span>
+        <span style="font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:300;color:var(--text-muted);"> / month</span>
+        <span style="display:block;font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:300;color:var(--text-muted);margin-top:3px;">or ₱799 / year &nbsp;·&nbsp; save 33%</span>
+      </div>
+      <ul class="modal-perks">
+        <li><span class="perk-dot"></span>Unlimited calculation history</li>
+        <li><span class="perk-dot"></span>Scientific &amp; conversion modes</li>
+        <li><span class="perk-dot"></span>No ads, ever</li>
+      </ul>
+      <button class="btn-subscribe" id="btn-sub">Subscribe for ₱99 / mo</button>
+      <button class="btn-later" id="btn-later">Maybe Later</button>
+    </div>
+  </div>
+
+  <!-- calculator -->
+  <div id="calc" aria-label="Calculator">
+
+    <div id="display-area">
+      <div id="expression" aria-live="polite"></div>
+      <div id="result" role="status" aria-live="polite">0</div>
+      <div class="sub-badge" id="sub-badge">
+        <span class="sub-dot"></span>
+        <span class="sub-text">premium active</span>
+      </div>
+    </div>
+
+    <div id="btn-grid">
+      <!-- row 1 -->
+      <button class="btn ac" data-action="clear">AC</button>
+      <button class="btn fn"  data-action="sign">+/−</button>
+      <button class="btn fn"  data-action="pct">%</button>
+      <button class="btn op orange" data-action="op" data-value="÷">÷</button>
+
+      <!-- row 2 -->
+      <button class="btn" data-action="digit" data-value="7">7</button>
+      <button class="btn" data-action="digit" data-value="8">8</button>
+      <button class="btn" data-action="digit" data-value="9">9</button>
+      <button class="btn op orange" data-action="op" data-value="×">×</button>
+
+      <!-- row 3 -->
+      <button class="btn" data-action="digit" data-value="4">4</button>
+      <button class="btn" data-action="digit" data-value="5">5</button>
+      <button class="btn" data-action="digit" data-value="6">6</button>
+      <button class="btn op orange" data-action="op" data-value="−">−</button>
+
+      <!-- row 4 -->
+      <button class="btn" data-action="digit" data-value="1">1</button>
+      <button class="btn" data-action="digit" data-value="2">2</button>
+      <button class="btn" data-action="digit" data-value="3">3</button>
+      <button class="btn op orange" data-action="op" data-value="+">+</button>
+
+      <!-- row 5 -->
+      <button class="btn zero" data-action="digit" data-value="0">0</button>
+      <button class="btn fn"   data-action="dot">.</button>
+      <button class="btn eq"   data-action="equals">=</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let isSubscribed = false;
+
+  // ── state ──
+  let current = '0';
+  let previous = null;
+  let operator = null;
+  let freshResult = false;
+  let pendingExpression = '';
+
+  const displayResult = document.getElementById('result');
+  const displayExpr   = document.getElementById('expression');
+  const modalWrap     = document.getElementById('modal-wrap');
+  const subBadge      = document.getElementById('sub-badge');
+  const eqBtn         = document.querySelector('.btn.eq');
+
+  function updateDisplay(val, expr) {
+    const s = String(val);
+    displayResult.className = 'btn' in Object ? '' : '';
+    if (s.length > 12) displayResult.classList.add('bigger');
+    else if (s.length > 9) displayResult.classList.add('big');
+    else displayResult.className = '';
+    displayResult.textContent = s;
+    if (expr !== undefined) displayExpr.textContent = expr;
+  }
+
+  function formatNum(n) {
+    if (!isFinite(n)) return 'Error';
+    const s = parseFloat(n.toPrecision(12)).toString();
+    return s;
+  }
+
+  function resolveOp(a, op, b) {
+    switch (op) {
+      case '+': return a + b;
+      case '−': return a - b;
+      case '×': return a * b;
+      case '÷': return b === 0 ? Infinity : a / b;
+    }
+  }
+
+  function pressDigit(v) {
+    if (freshResult) { current = v; freshResult = false; }
+    else current = current === '0' ? v : current + v;
+    updateDisplay(current);
+  }
+
+  function pressOp(op) {
+    const cur = parseFloat(current);
+    if (previous !== null && !freshResult) {
+      const res = resolveOp(previous, operator, cur);
+      previous = res;
+      updateDisplay(formatNum(res), formatNum(res) + ' ' + op);
+    } else {
+      previous = cur;
+      displayExpr.textContent = current + ' ' + op;
+    }
+    operator = op;
+    freshResult = true;
+  }
+
+  function buildExpression() {
+    if (operator && previous !== null) {
+      return formatNum(previous) + ' ' + operator + ' ' + current;
+    }
+    return current;
+  }
+
+  function doEquals() {
+    if (operator === null || previous === null) return;
+    const a = previous;
+    const b = parseFloat(current);
+    const expr = buildExpression();
+    const res  = resolveOp(a, operator, b);
+    pendingExpression = expr;
+    pendingResult     = res;
+
+    if (!isSubscribed) {
+      showModal();
+    } else {
+      applyResult(expr, res);
+    }
+  }
+
+  let pendingResult = null;
+
+  function applyResult(expr, res) {
+    const formatted = formatNum(res);
+    updateDisplay(formatted, expr + ' =');
+    current     = formatted;
+    previous    = null;
+    operator    = null;
+    freshResult = true;
+    // pulse the = button
+    eqBtn.classList.remove('pulsing');
+    void eqBtn.offsetWidth;
+    eqBtn.classList.add('pulsing');
+    eqBtn.addEventListener('animationend', () => eqBtn.classList.remove('pulsing'), { once: true });
+  }
+
+  function pressClear() {
+    current = '0'; previous = null; operator = null; freshResult = false;
+    updateDisplay('0', '');
+  }
+
+  function pressSign() {
+    if (current === '0') return;
+    current = String(parseFloat(current) * -1);
+    updateDisplay(current);
+  }
+
+  function pressPct() {
+    current = String(parseFloat(current) / 100);
+    updateDisplay(current);
+  }
+
+  function pressDot() {
+    if (freshResult) { current = '0.'; freshResult = false; }
+    else if (!current.includes('.')) current += '.';
+    updateDisplay(current);
+  }
+
+  // ── modal ──
+  function showModal() {
+    modalWrap.classList.add('show');
+    document.getElementById('btn-sub').focus();
+  }
+  function hideModal() {
+    modalWrap.classList.remove('show');
+  }
+
+  document.getElementById('btn-sub').addEventListener('click', () => {
+    isSubscribed = true;
+    subBadge.classList.add('show');
+    hideModal();
+    if (pendingResult !== null) applyResult(pendingExpression, pendingResult);
+  });
+
+  document.getElementById('btn-later').addEventListener('click', () => {
+    hideModal();
+    pendingResult = null;
+  });
+
+  // ── button grid ──
+  document.getElementById('btn-grid').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const value  = btn.dataset.value;
+    switch (action) {
+      case 'digit':  pressDigit(value); break;
+      case 'op':     pressOp(value);    break;
+      case 'equals': doEquals();        break;
+      case 'clear':  pressClear();      break;
+      case 'sign':   pressSign();       break;
+      case 'pct':    pressPct();        break;
+      case 'dot':    pressDot();        break;
+    }
+  });
+
+  // ── keyboard support ──
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9')         pressDigit(e.key);
+    else if (e.key === '.')                   pressDot();
+    else if (e.key === '+')                   pressOp('+');
+    else if (e.key === '-')                   pressOp('−');
+    else if (e.key === '*')                   pressOp('×');
+    else if (e.key === '/')                   { e.preventDefault(); pressOp('÷'); }
+    else if (e.key === 'Enter' || e.key === '=') doEquals();
+    else if (e.key === 'Escape' || e.key === 'c') pressClear();
+    else if (e.key === '%')                   pressPct();
+  });
+</script>
+</body>
+</html>
